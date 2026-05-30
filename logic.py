@@ -16,7 +16,7 @@ from typing import List, Dict
 # CONFIG
 # ==========================================
 
-API_KEY = "AQ.Ab8RN6J2PRJ-vjjc720cBni40P4_bwmcd05EyTTltwrs7oHhLg"
+API_KEY = "AQ.Ab8RN6KnVlg5o9RMrCWMfrk26oFUH8YY87W7WDrRskmaGX2TfA"
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel(
