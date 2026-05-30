@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProspectForge AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      border: 4px solid #e5e7eb;
+      border-top: 4px solid #4f46e5;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-7xl mx-auto p-8">
+    <h1 class="text-4xl font-bold text-center mb-10 text-indigo-700">🔨 ProspectForge AI</h1>
+
+    <!-- Enrich Section -->
+    <div class="bg-white rounded-3xl shadow-xl p-8 mb-10">
+      <h2 class="text-2xl font-semibold mb-6">Enrich Company Profiles</h2>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Website URL(s) <span class="text-red-500">*</span>
+        </label>
+        <textarea id="urlInput" rows="3" placeholder="https://www.zoho.com/" 
+                  class="w-full border border-gray-300 p-4 rounded-2xl focus:outline-none focus:border-indigo-500"></textarea>
+        <p class="text-xs text-gray-500 mt-1">Single URL or JSON array like ["https://zoho.com", "https://chargebee.com"]</p>
+      </div>
+
+      <button onclick="enrichCompany()" id="enrichBtn"
+              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-5 rounded-2xl text-lg flex items-center justify-center gap-3">
+        <span id="btnText">Enrich Company</span>
+      </button>
+
+      <div id="singleResult" class="mt-8"></div>
+    </div>
+
+    <!-- Results Section - Full Columns -->
+    <div class="bg-white rounded-3xl shadow-xl p-8">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-semibold">All Enriched Companies</h2>
+        <button onclick="loadResults()" 
+                class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl">
+          Refresh Results
+        </button>
+      </div>
+      <div id="resultsTable" class="overflow-x-auto"></div>
+    </div>
+  </div>
+
+  <script>
+    async function enrichCompany() {
+      const input = document.getElementById('urlInput').value.trim();
+      const btn = document.getElementById('enrichBtn');
+      const btnText = document.getElementById('btnText');
+
+      if (!input) {
+        alert("Please enter at least one website URL");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `
+        <div class="spinner"></div>
+        <span class="ml-3">Processing...</span>
+      `;
+
+      try {
+        const response = await fetch('/enrich', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: input })
+        });
+
+        const data = await response.json();
+        
+        let html = `<div class="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl">`;
+        
+        if (Array.isArray(data)) {
+          html += `<h3 class="font-bold text-xl mb-4">✅ Processed ${data.length} Companies</h3>`;
+          data.forEach(item => {
+            html += `<details class="mb-4"><summary class="cursor-pointer font-medium">${item.website_name}</summary>
+                     <pre class="mt-3 text-sm bg-white p-4 rounded-xl">${JSON.stringify(item, null, 2)}</pre></details>`;
+          });
+        } else {
+          html += `<h3 class="font-bold text-xl mb-4">✅ Result: ${data.website_name}</h3>`;
+          html += `<pre class="bg-white p-6 rounded-xl text-sm overflow-auto">${JSON.stringify(data, null, 2)}</pre>`;
+        }
+        html += `</div>`;
+
+        document.getElementById('singleResult').innerHTML = html;
+      } catch (err) {
+        document.getElementById('singleResult').innerHTML = `<div class="bg-red-50 p-6 rounded-2xl text-red-600">Error: ${err.message}</div>`;
+      }
+
+      btn.innerHTML = `<span id="btnText">Enrich Company</span>`;
+      btn.disabled = false;
+      loadResults();
+    }
+
+    async function loadResults() {
+      try {
+        const res = await fetch('/results');
+        const data = await res.json();
+        
+        let html = `
+          <table class="w-full border-collapse border border-gray-200 text-sm">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="p-3 text-left">Website Name</th>
+                <th class="p-3 text-left">Company Name</th>
+                <th class="p-3 text-left">Core Service</th>
+                <th class="p-3 text-left">Target Customer</th>
+                <th class="p-3 text-left">Address</th>
+                <th class="p-3 text-left">Mobile</th>
+                <th class="p-3 text-left">Emails</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+        data.forEach(item => {
+          const d = item.data;
+          html += `<tr class="border-t hover:bg-gray-50">
+            <td class="p-3 font-medium">${d.website_name || 'N/A'}</td>
+            <td class="p-3">${d.company_name || 'N/A'}</td>
+            <td class="p-3">${d.core_service || 'N/A'}</td>
+            <td class="p-3">${d.target_customer || 'N/A'}</td>
+            <td class="p-3 text-xs">${d.address || 'N/A'}</td>
+            <td class="p-3 text-xs">${d.mobile_number || 'N/A'}</td>
+            <td class="p-3 text-xs">${Array.isArray(d.mail) ? d.mail.join('<br>') : 'N/A'}</td>
+          </tr>`;
+        });
+
+        html += `</tbody></table>`;
+        
+        document.getElementById('resultsTable').innerHTML = html;
+      } catch(e) {
+        document.getElementById('resultsTable').innerHTML = `<p class="text-red-500 p-8 text-center">Could not load results.</p>`;
+      }
+    }
+
+    window.onload = loadResults;
+  </script>
+</body>
+</html>

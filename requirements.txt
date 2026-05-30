@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+google-generativeai
+beautifulsoup4
+requests
+lxml    
